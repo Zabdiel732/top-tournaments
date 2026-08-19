@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart TV Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        /* Safe Zone y Layout 10-foot */
+        body {
+            margin: 0;
+            padding: 54px 96px; /* Safe zone */
+            width: 1920px;
+            height: 1080px;
+            box-sizing: border-box;
+            background-color: #0F2027;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Sin scroll */
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 20px;
+            height: 100%;
+        }
+        .card {
+            background: #203A43;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px; /* Jerarquía tipográfica */
+            border: 5px solid transparent;
+        }
+        .card.active { border-color: #FFC107; } /* Foco D-pad */
+    </style>
+</head>
+<body>
+    <div class="grid">
+        <div class="card active" id="card-0">Ritmo: <span id="tv-ritmo">0</span></div>
+        <div class="card" id="card-1">Pasos: <span id="tv-pasos">0</span></div>
+        <div class="card" id="card-2">Torneo Activo</div>
+        <div class="card" id="card-3">Estadísticas</div>
+    </div>
+
+    <!-- Firebase SDKs (Añade tus credenciales) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+        // IMPORTANTE: Recuerda que las credenciales no deben subirse a GitHub (.env)
+        const firebaseConfig = { /* TUS DATOS AQUÍ */ };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // R4: Escucha reactiva
+        onSnapshot(doc(db, 'ecosystem', 'current'), (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+                document.getElementById('tv-ritmo').innerText = data.ritmo;
+                document.getElementById('tv-pasos').innerText = data.pasos;
+            }
+        });
+
+        // Registro de Service Worker para caché offline
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+
+        // Navegación D-Pad
+        let currentIndex = 0;
+        const cards = document.querySelectorAll('.card');
+
+        window.addEventListener('keydown', (e) => {
+            cards[currentIndex].classList.remove('active');
+            if (e.key === 'ArrowRight' && currentIndex < 3) currentIndex++;
+            if (e.key === 'ArrowLeft' && currentIndex > 0) currentIndex--;
+            if (e.key === 'ArrowDown' && currentIndex < 2) currentIndex += 2;
+            if (e.key === 'ArrowUp' && currentIndex > 1) currentIndex -= 2;
+            
+            cards[currentIndex].classList.add('active');
+            
+            if (e.key === 'Enter') {
+                console.log("Elemento seleccionado: ", currentIndex);
+            }
+        });
+    </script>
+</body>
+</html>
