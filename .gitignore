@@ -1,3 +1,49 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-/.last_build_id
+
+# Build output
+/build/
+/**/build/
+/.gradle/
+/.idea/
+.vscode/
+
+# Android
+/android/.gradle/
+/android/app/google-services.json
+**/google-services.json
+local.properties
+*.keystore
+*.jks
+
+# iOS
+**/Pods/
+**/Runner.xcworkspace/
+*.xcuserstate
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Node
+node_modules/
+npm-debug.log*
+
+# PWA dev
+/tv_pwa/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sensitive envs
+.env
+.env.*
 .env
 *.env
 *.jks

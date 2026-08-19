@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Política de Seguridad del Contenido (CSP) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://*.firebaseio.com; script-src 'self' 'module' https://www.gstatic.com; img-src 'self' data:;">
     <title>Smart TV Dashboard</title>
     <link rel="manifest" href="manifest.json">
     <style>
@@ -49,8 +51,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-        // IMPORTANTE: Recuerda que las credenciales no deben subirse a GitHub (.env)
-        const firebaseConfig = { /* TUS DATOS AQUÍ */ };
+                // IMPORTANTE: Recuerda que las credenciales no deben subirse a GitHub (.env)
+                const firebaseConfig = {
+                    apiKey: "AIzaSyB_5zlS-c0SaubyBH2uUr4S6SflZ0bMfEw",
+                    authDomain: "top-tournaments.firebaseapp.com",
+                    projectId: "top-tournaments",
+                    storageBucket: "top-tournaments.firebasestorage.app",
+                    messagingSenderId: "149059459443",
+                    appId: "1:149059459443:web:2a78646e521c477b7e4d06"
+                };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
