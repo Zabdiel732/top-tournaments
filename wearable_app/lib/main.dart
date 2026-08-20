@@ -10,7 +10,14 @@ class WearableApp extends StatelessWidget {
   const WearableApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: WearableScreen());
+    return MaterialApp(
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFF0F2027),
+        textTheme: const TextTheme(bodyText2: TextStyle(color: Colors.white)),
+        appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF0F2027)),
+      ),
+      home: const WearableScreen(),
+    );
   }
 }
 
@@ -54,9 +61,18 @@ class _WearableScreenState extends State<WearableScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Pasos: $pasos', style: const TextStyle(color: Colors.white)),
-            Text('Ritmo: $ritmo bpm', style: const TextStyle(color: Colors.redAccent)),
-            Text('Calorías: $calorias', style: const TextStyle(color: Colors.orange)),
+            // Header with logo
+            Padding(
+              padding: const EdgeInsets.only(bottom:16.0),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Image.asset('assets/images/logo.png', width:28, height:28),
+                const SizedBox(width:8),
+                const Text('Top Tournaments', style: TextStyle(color: Colors.white, fontSize:16))
+              ]),
+            ),
+            Text('Pasos: $pasos', style: const TextStyle(color: Colors.white, fontSize:18)),
+            Text('Ritmo: $ritmo bpm', style: const TextStyle(color: Color(0xFFFFC107), fontSize:18)),
+            Text('Calorías: $calorias', style: const TextStyle(color: Color(0xFF203A43), fontSize:18)),
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: _toggleSimulation,
