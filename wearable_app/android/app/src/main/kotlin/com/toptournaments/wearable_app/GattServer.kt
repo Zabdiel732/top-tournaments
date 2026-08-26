@@ -5,8 +5,11 @@ import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
+import androidx.core.content.ContextCompat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
@@ -29,14 +32,25 @@ class GattServer(private val context: Context) {
     private var timerRef: java.util.Timer? = null
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            super.onServiceAdded(status, service)
+            if (status == BluetoothGatt.GATT_SUCCESS && service.uuid == UUID.fromString(SERVICE_UUID)) {
+                startAdvertising()
+                startMetricGeneration()
+                Log.i(TAG, "GATT service registered before advertising")
+            } else {
+                Log.e(TAG, "GATT service registration failed: $status")
+            }
+        }
+
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             super.onConnectionStateChange(device, status, newState)
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 connectedDevices.add(device)
-                Log.i(TAG, "Device connected: ${'$'}{device.address}")
+                Log.i(TAG, "Device connected: ${device.address}")
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connectedDevices.remove(device)
-                Log.i(TAG, "Device disconnected: ${'$'}{device.address}")
+                Log.i(TAG, "Device disconnected: ${device.address}")
             }
         }
     }
@@ -68,19 +82,44 @@ class GattServer(private val context: Context) {
         service.addCharacteristic(char2)
         service.addCharacteristic(char3)
 
-        gattServer?.addService(service)
-
-        // Start advertising
+        // addService is asynchronous; advertising starts from onServiceAdded.
         try {
-            val advertiser = btAdapter.bluetoothLeAdvertiser
-            val settings = AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(true).setTimeout(0).build()
-            val data = AdvertiseData.Builder().addServiceUuid(ParcelUuid(UUID.fromString(SERVICE_UUID))).setIncludeDeviceName(true).build()
-            advertiser.startAdvertising(settings, data, advertiseCallback)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, "BLUETOOTH_ADVERTISE permission not granted")
+                gattServer?.close()
+                gattServer = null
+                return
+            }
+            gattServer?.addService(service)
         } catch (e: Exception) {
-            Log.w(TAG, "Advertising not available: ${'$'}e")
+            Log.e(TAG, "GATT service registration failed", e)
         }
+    }
 
-        // Start periodic metric generation and notify connected clients
+    private fun startAdvertising() {
+        try {
+            val advertiser = btAdapter?.bluetoothLeAdvertiser
+            if (advertiser == null) {
+                Log.e(TAG, "BLE advertiser unavailable")
+                return
+            }
+            val settings = AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(true).setTimeout(0).build()
+            val data = AdvertiseData.Builder()
+                .addServiceUuid(ParcelUuid(UUID.fromString(SERVICE_UUID)))
+                .setIncludeDeviceName(false)
+                .build()
+            val scanResponse = AdvertiseData.Builder()
+                .setIncludeDeviceName(true)
+                .build()
+            advertiser.startAdvertising(settings, data, scanResponse, advertiseCallback)
+        } catch (e: Exception) {
+            Log.e(TAG, "Advertising not available", e)
+        }
+    }
+
+    private fun startMetricGeneration() {
+        if (timerRef != null) return
         timerRef = fixedRateTimer("metrics", initialDelay = 0L, period = 1000L) {
             val pasos = Random().nextInt(3) + 1
             val ritmo = 70 + Random().nextInt(40)
@@ -99,7 +138,7 @@ class GattServer(private val context: Context) {
 
         override fun onStartFailure(errorCode: Int) {
             super.onStartFailure(errorCode)
-            Log.w(TAG, "Advertising failed: ${'$'}errorCode")
+            Log.e(TAG, "Advertising failed: $errorCode")
         }
     }
 
