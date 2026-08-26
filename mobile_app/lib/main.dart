@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:flutter_blue_plus_platform_interface/flutter_blue_plus_platform_interface.dart' as fbp_platform;
 import 'ble/uuids.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -40,7 +39,7 @@ class _MobileAppState extends State<MobileApp> {
     await characteristic.setNotifyValue(true);
     debugPrint('TopTournamentsBLE: subscribed to ${characteristic.uuid}');
     characteristic.lastValueStream.listen((value) async {
-      if (value == null || value.isEmpty) return;
+      if (value.isEmpty) return;
       // Decodificar Int32 little-endian
       int parsed = 0;
       try {
@@ -55,9 +54,13 @@ class _MobileAppState extends State<MobileApp> {
       debugPrint('TopTournamentsBLE: notify from $cuuid -> $parsed');
       setState(() {
         connectionState = "Conectado recibiendo datos...";
-        if (cuuid == BleUuids.CHAR_METRIC_1) pasos = parsed;
-        else if (cuuid == BleUuids.CHAR_METRIC_2) ritmo = parsed;
-        else if (cuuid == BleUuids.CHAR_METRIC_3) calorias = parsed;
+        if (cuuid == BleUuids.CHAR_METRIC_1) {
+          pasos = parsed;
+        } else if (cuuid == BleUuids.CHAR_METRIC_2) {
+          ritmo = parsed;
+        } else if (cuuid == BleUuids.CHAR_METRIC_3) {
+          calorias = parsed;
+        }
       });
 
       // Enviar conjunto de métricas a Firestore (si alguna es 0, se usa el valor actual)
@@ -129,24 +132,23 @@ class _MobileAppState extends State<MobileApp> {
                       for (var r in results) {
                         // comprobar si el advertising contiene el service UUID
                         final adv = r.advertisementData;
-                        if (adv.serviceUuids.contains(BleUuids.SERVICE)) {
+                        if (adv.serviceUuids.contains(Guid(BleUuids.SERVICE))) {
                           found = r.device;
                           break;
                         }
                       }
                       if (found != null) {
                         await FlutterBluePlus.stopScan();
-                        setState(() { connectionState = 'Conectando a ${found!.name.isNotEmpty ? found!.name : found!.id.id}'; });
+                        setState(() { connectionState = 'Conectando a ${found!.platformName.isNotEmpty ? found!.platformName : found!.remoteId.str}'; });
                         try {
-                          await fbp_platform.FlutterBluePlusPlatform.instance
-                              .connect(fbp_platform.BmConnectRequest(remoteId: found!.id, autoConnect: false));
+                            await found!.connect(license: License.nonprofit);
                         } catch (e) {
                           // ignore if already connected or platform call failed
                         }
                         connectedDevice = found;
                         setState(() { connectionState = 'Descubriendo servicios...'; });
                         final services = await found!.discoverServices();
-                        bool subscribed = false;
+                        int subscribedCount = 0;
                         for (var s in services) {
                           if (s.uuid.toString().toLowerCase() == BleUuids.SERVICE) {
                             for (var c in s.characteristics) {
@@ -154,15 +156,13 @@ class _MobileAppState extends State<MobileApp> {
                               if (cuuid == BleUuids.CHAR_METRIC_1 || cuuid == BleUuids.CHAR_METRIC_2 || cuuid == BleUuids.CHAR_METRIC_3) {
                                 if (c.properties.notify) {
                                   await subscribeToWearable(c);
-                                  subscribed = true;
+                                  subscribedCount++;
                                 }
                               }
-                              if (subscribed) break;
                             }
                           }
-                          if (subscribed) break;
                         }
-                        if (!subscribed) {
+                        if (subscribedCount != 3) {
                           setState(() { connectionState = 'Conectado pero sin características NOTIFY en el servicio esperado'; });
                         }
                         _isConnecting = false;
