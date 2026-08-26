@@ -6,10 +6,10 @@
 ## 1. Datos de identificación
 - Nombre: Jesús Zabdiel Hernández Martínez
 - Matrícula: 2023371177
-- Grupo: [PENDIENTE]
-- Fecha: [PENDIENTE]
-- Repositorio: [PENDIENTE]
-- Rama evaluada: `extraordinario` [verificar si la rama pública debe renombrarse a `evaluacion-2-extraordinaria`]
+- Grupo: IDGS16
+- Fecha: 26/08/2026
+- Repositorio: (https://github.com/Zabdiel732/top-tournaments.git)
+- Rama evaluada:  `evaluacion-2-extraordinaria`
 
 ## 2. Descripción general de la solución
 El ecosistema está compuesto por `wearable_app`, `mobile_app` y `tv_pwa`.
@@ -33,7 +33,7 @@ El Wear publica tres características notificables: pasos, ritmo y calorías. El
 - Características: `ff01` pasos, `ff02` ritmo, `ff03` calorías.
 - CCCD: `00002902-0000-1000-8000-00805f9b34fb`.
 - Implementación nativa: `wearable_app/android/app/src/main/kotlin/com/toptournaments/wearable_app/GattServer.kt`.
-- Evidencia: `E1-EV01` [PENDIENTE: captura con GATT service registered, Advertising started y métricas].
+- Evidencia: `E1-EV01` [PENDIENTE: captura con GATT service registered, Advertising started y métricas] GATT service: ![alt text](image.png), Advertising started: ![alt text](image-1.png) , Metricas: ![alt text](image-2.png).
 
 ## 4. E2 - Teléfono Android y recepción BLE
 - Implementación: `mobile_app/lib/main.dart`.
@@ -43,7 +43,9 @@ El Wear publica tres características notificables: pasos, ritmo y calorías. El
 - Se descubren servicios y se habilitan las tres notificaciones mediante `setNotifyValue(true)`, que escribe el CCCD.
 - Protocolo: entero con signo de 32 bits, little-endian, 4 bytes. Ejemplo `01 00 00 00` = 1.
 - Desconexión: se muestra `Wearable desconectado` y se libera la conexión para permitir reintento.
-- Evidencias: `E2-EV01` conexión; `E2-EV02` suscripciones; `E2-EV03` recepción de las tres métricas [PENDIENTE: capturas/logs].
+- Evidencias: `E2-EV01` conexión;
+ `E2-EV02` suscripciones;
+ `E2-EV03` recepción de las tres métricas [PENDIENTE: capturas/logs].
 
 ## 5. E3 - PWA Smart TV
 - Implementación: `tv_pwa/index.html`, `tv_pwa/app.js`, `tv_pwa/styles.css`.
@@ -65,15 +67,15 @@ El Wear publica tres características notificables: pasos, ritmo y calorías. El
 
 | Corrida | Acción | Tiempo | Cumple | Evidencia |
 |---|---|---:|---|---|
-| 1 | Cambio de métricas desde Wear | [PENDIENTE] s | [Sí/No] | E4-EV01 |
-| 2 | Cambio de métricas desde Wear | [PENDIENTE] s | [Sí/No] | E4-EV02 |
-| 3 | Cambio de métricas desde Wear | [PENDIENTE] s | [Sí/No] | E4-EV03 |
+| 1 | Cambio de métricas desde Wear | 1 s | [Sí] | ![alt text](image-3.png) |
+| 2 | Cambio de métricas desde Wear | 1 s | [Sí] | ![alt text](image-4.png) |
+| 3 | Cambio de métricas desde Wear | 1 s | [Sí] | ![alt text](image-5.png) |
 
 ## 7. E5 - Pruebas funcionales y manejo de fallos
 
 | ID | Prueba | Procedimiento | Resultado esperado | Resultado obtenido | Cumple |
 |---|---|---|---|---|---|
-| E5-EV01 | Wear | Iniciar, observar, detener | Métricas cambian y se detienen | [PENDIENTE] | [ ] |
+| E5-EV01 | Wear | Iniciar, observar, detener | Métricas cambian y se detienen | [![alt text](image-6.png)] ![alt text](image-7.png) | [ si ] |
 | E5-EV02 | BLE NOTIFY | Conectar y suscribirse | Llegan valores sin polling | [PENDIENTE] | [ ] |
 | E5-EV03 | D-pad | Flechas y Enter/OK | Foco y límites correctos | [PENDIENTE] | [ ] |
 | E5-EV04 | Offline | DevTools Offline y recarga | Interfaz carga desde caché | [PENDIENTE] | [ ] |
@@ -84,11 +86,20 @@ El Wear publica tres características notificables: pasos, ritmo y calorías. El
 
 ## 8. E6 - Integración y configuración reproducible
 - Flutter/Dart: `flutter --version` [PENDIENTE: registrar salida].
-- Android Studio, VS Code y extensiones: [PENDIENTE].
-- Teléfono cliente: [modelo, Android/API y RAM PENDIENTE].
-- Wear o periférico: [modelo, Android/API y RAM PENDIENTE].
-- Chrome DevTools: viewport 1920x1080; user agent [PENDIENTE].
-- Firebase: proyecto `top-tournaments`; Firestore habilitado; reglas y región [PENDIENTE].
+- VS Code y extensiones: Version mas reciente de VS CODE
+- Teléfono cliente: [Redmi note 13 pro, android 15 y RAM 8+4].
+- Wear o periférico: [Oppo A40, Android 14 y RAM 4+4].
+- Chrome DevTools: viewport 1920x1080.
+- Firebase: proyecto `top-tournaments`; Firestore habilitado; reglas: rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /ecosystem/current {
+      allow read, write: if true;
+    }
+  }
+}
+ y región: Mexico.
 - BLE: el Wear actúa como GATT Server/Peripheral y el teléfono como GATT Client/Central.
 - Ejecución: iniciar Wear, iniciar móvil, servir `tv_pwa` con `npx serve .`, abrir la URL local.
 - Limitación: el advertising en emuladores Android puede ser inestable; se utilizó [dispositivo físico/emulador PENDIENTE].
@@ -96,7 +107,7 @@ El Wear publica tres características notificables: pasos, ritmo y calorías. El
 ## 9. Inventario de evidencias
 | ID | Criterio | Descripción | Referencia |
 |---|---|---|---|
-| E1-EV01 | E1 | Registro GATT y advertising | [PENDIENTE] |
+| E1-EV01 | E1 | Registro GATT y advertising | ![alt text](image-8.png) ![alt text](image-9.png) |
 | E2-EV01 | E2 | Scan, conexión y descubrimiento | [PENDIENTE] |
 | E2-EV02 | E2 | CCCD y tres suscripciones | [PENDIENTE] |
 | E2-EV03 | E2 | Tres NOTIFY decodificados | [PENDIENTE] |
