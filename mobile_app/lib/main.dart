@@ -26,18 +26,43 @@ class _MobileAppState extends State<MobileApp> {
   int pasos = 0;
   int ritmo = 0;
   int calorias = 0;
+  Future<void> _firestoreWriteQueue = Future<void>.value();
 
   bool _matchesUuid(Guid actual, String expected) {
     return actual == Guid(expected);
   }
   
   // R4: Escritura reactiva en Firestore
-  Future<void> syncWithTV(int ritmo, int pasos) async {
-    await FirebaseFirestore.instance.collection('ecosystem').doc('current').set({
+  Future<void> syncWithTV(int ritmo, int pasos) {
+    return _queueFirestoreWrite({
       'ritmo': ritmo,
       'pasos': pasos,
-      'timestamp': FieldValue.serverTimestamp(),
+      'calorias': calorias,
     });
+  }
+
+  Future<void> _queueFirestoreWrite(Map<String, Object> metrics) {
+    _firestoreWriteQueue = _firestoreWriteQueue.then((_) async {
+      try {
+        await FirebaseFirestore.instance.collection('ecosystem').doc('current').set({
+          ...metrics,
+          'timestamp': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        if (mounted && connectionState.contains('Firestore')) {
+          setState(() {
+            connectionState = 'Conectado; Firestore sincronizado';
+          });
+        }
+      } on FirebaseException catch (error) {
+        debugPrint('TopTournamentsFirestore: ${error.code} ${error.message}');
+        if (mounted) {
+          setState(() {
+            connectionState = 'BLE OK; Firestore no disponible (${error.code})';
+          });
+        }
+      }
+    });
+    return _firestoreWriteQueue;
   }
 
   // R2: Suscripción a notificaciones BLE
@@ -69,12 +94,10 @@ class _MobileAppState extends State<MobileApp> {
         }
       });
 
-      // Enviar conjunto de métricas a Firestore (si alguna es 0, se usa el valor actual)
-      await FirebaseFirestore.instance.collection('ecosystem').doc('current').set({
+      await _queueFirestoreWrite({
         'ritmo': ritmo,
         'pasos': pasos,
         'calorias': calorias,
-        'timestamp': FieldValue.serverTimestamp(),
       });
     });
   }
