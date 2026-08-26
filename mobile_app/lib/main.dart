@@ -35,7 +35,7 @@ class _MobileAppState extends State<MobileApp> {
   }
 
   // R2: Suscripción a notificaciones BLE
-  void subscribeToWearable(BluetoothCharacteristic characteristic) async {
+  Future<void> subscribeToWearable(BluetoothCharacteristic characteristic) async {
     await characteristic.setNotifyValue(true);
     debugPrint('TopTournamentsBLE: subscribed to ${characteristic.uuid}');
     characteristic.lastValueStream.listen((value) async {
@@ -137,9 +137,9 @@ class _MobileAppState extends State<MobileApp> {
                         await FlutterBluePlus.stopScan();
                         setState(() { connectionState = 'Conectando a ${found!.name.isNotEmpty ? found!.name : found!.id.id}'; });
                         try {
-                          await found!.connect();
+                          await found!.connect(license: '');
                         } catch (e) {
-                          // ignore if already connected
+                          // ignore if already connected or license not required
                         }
                         connectedDevice = found;
                         setState(() { connectionState = 'Descubriendo servicios...'; });
