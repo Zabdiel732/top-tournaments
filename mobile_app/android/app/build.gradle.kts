@@ -2,8 +2,10 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
 }
+
+// Apply Google services plugin via buildscript classpath
+apply(plugin = "com.google.gms.google-services")
 
 android {
     namespace = "com.toptournaments.mobile_app"

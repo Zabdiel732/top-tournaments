@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'ble/client.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,28 +19,38 @@ class MobileApp extends StatefulWidget {
 
 class _MobileAppState extends State<MobileApp> {
   String connectionState = "Desconectado";
-  
-  // R4: Escritura reactiva en Firestore
-  Future<void> syncWithTV(int ritmo, int pasos) async {
+  int metric1 = 0;
+  int metric2 = 0;
+  int metric3 = 0;
+
+  // R4: Escritura reactiva en Firestore (envía las 3 métricas)
+  Future<void> syncWithTV(int ritmo, int pasos, int calorias) async {
     await FirebaseFirestore.instance.collection('ecosystem').doc('current').set({
       'ritmo': ritmo,
       'pasos': pasos,
+      'calorias': calorias,
       'timestamp': FieldValue.serverTimestamp(),
     });
   }
 
-  // R2: Suscripción a notificaciones BLE
-  void subscribeToWearable(BluetoothCharacteristic characteristic) async {
-    await characteristic.setNotifyValue(true);
-    characteristic.lastValueStream.listen((value) {
-      // Parsear los bytes recibidos (ejemplo simplificado)
-      int ritmoCardiaco = value.isNotEmpty ? value[0] : 0;
-      
-      setState(() {
-        connectionState = "Conectado recibiendo datos...";
-      });
-      
-      syncWithTV(ritmoCardiaco, 100); // Enviar a Firestore
+  @override
+  void initState() {
+    super.initState();
+    // Subscribir a streams del cliente BLE
+    BleClient.instance.connectionStateStream.listen((s) {
+      setState(() { connectionState = s; });
+    });
+    BleClient.instance.metric1Stream.listen((v) {
+      setState(() { metric1 = v; });
+      syncWithTV(metric2, metric1, metric3);
+    });
+    BleClient.instance.metric2Stream.listen((v) {
+      setState(() { metric2 = v; });
+      syncWithTV(metric2, metric1, metric3);
+    });
+    BleClient.instance.metric3Stream.listen((v) {
+      setState(() { metric3 = v; });
+      syncWithTV(metric2, metric1, metric3);
     });
   }
 
@@ -52,7 +63,7 @@ class _MobileAppState extends State<MobileApp> {
         scaffoldBackgroundColor: const Color(0xFF0F2027),
         appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF0F2027)),
         elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFFC107), foregroundColor: Colors.black)),
-        textTheme: const TextTheme(bodyText2: TextStyle(color: Colors.white)),
+        textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.white)),
       ),
       home: Scaffold(
         appBar: AppBar(
@@ -68,61 +79,38 @@ class _MobileAppState extends State<MobileApp> {
             children: [
               Text('Estado BLE: $connectionState'),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  setState(() { connectionState = 'Buscando dispositivos...'; });
-                  // Solicitar permisos necesarios
-                  if (await Permission.bluetoothScan.request().isDenied) {
-                    setState(() { connectionState = 'Permiso de escaneo denegado'; });
-                    return;
-                  }
-                  if (await Permission.bluetoothConnect.request().isDenied) {
-                    setState(() { connectionState = 'Permiso de conexión denegado'; });
-                    return;
-                  }
-                  if (await Permission.location.request().isDenied) {
-                    setState(() { connectionState = 'Permiso de ubicación denegado'; });
-                    return;
-                  }
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      setState(() { connectionState = 'Buscando dispositivos...'; });
+                      // Solicitar permisos
+                      if (await Permission.bluetoothScan.request().isDenied) {
+                        setState(() { connectionState = 'Permiso de escaneo denegado'; });
+                        return;
+                      }
+                      if (await Permission.bluetoothConnect.request().isDenied) {
+                        setState(() { connectionState = 'Permiso de conexión denegado'; });
+                        return;
+                      }
+                      if (await Permission.location.request().isDenied) {
+                        setState(() { connectionState = 'Permiso de ubicación denegado'; });
+                        return;
+                      }
 
-                  // Escanear durante 5s y conectar al primer dispositivo encontrado
-                  final flutterBlue = FlutterBluePlus.instance;
-                  BluetoothDevice? target;
-                  try {
-                    await flutterBlue.startScan(timeout: const Duration(seconds: 5));
-                    flutterBlue.scanResults.listen((results) async {
-                      for (var r in results) {
-                        final d = r.device;
-                        if (d.name.isNotEmpty) {
-                          target = d;
-                          break;
-                        }
-                      }
-                      if (target != null) {
-                        await flutterBlue.stopScan();
-                        setState(() { connectionState = 'Conectando a ${target!.name}'; });
-                        await target!.connect(timeout: const Duration(seconds: 10));
-                        setState(() { connectionState = 'Descubriendo servicios...'; });
-                        final services = await target!.discoverServices();
-                        for (var s in services) {
-                          for (var c in s.characteristics) {
-                            if (c.properties.notify) {
-                              setState(() { connectionState = 'Suscribiendo a característica'; });
-                              subscribeToWearable(c);
-                              return;
-                            }
-                          }
-                        }
-                        setState(() { connectionState = 'Conectado pero sin característica NOTIFY encontrada'; });
-                      }
-                    });
-                  } catch (e) {
-                    setState(() { connectionState = 'Error BLE: $e'; });
-                  } finally {
-                    await flutterBlue.stopScan();
-                  }
-                },
-                child: const Text('Conectar Wearable'),
+                      await BleClient.instance.startScanAndConnect();
+                    },
+                    child: const Text('Conectar Wearable'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await BleClient.instance.disconnect();
+                    },
+                    child: const Text('Desconectar'),
+                  ),
+                ],
               )
             ],
           ),

@@ -1,10 +1,11 @@
 plugins {
     id("com.android.application")
-    // Google services plugin for Firebase
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Apply Google services plugin via buildscript classpath (if google-services.json present)
+apply(plugin = "com.google.gms.google-services")
 
 android {
     namespace = "com.toptournaments.wearable_app"
