@@ -37,6 +37,7 @@ class _MobileAppState extends State<MobileApp> {
   // R2: Suscripción a notificaciones BLE
   void subscribeToWearable(BluetoothCharacteristic characteristic) async {
     await characteristic.setNotifyValue(true);
+    debugPrint('TopTournamentsBLE: subscribed to ${characteristic.uuid}');
     characteristic.lastValueStream.listen((value) async {
       if (value == null || value.isEmpty) return;
       // Decodificar Int32 little-endian
@@ -50,6 +51,7 @@ class _MobileAppState extends State<MobileApp> {
       }
 
       final cuuid = characteristic.uuid.toString().toLowerCase();
+      debugPrint('TopTournamentsBLE: notify from $cuuid -> $parsed');
       setState(() {
         connectionState = "Conectado recibiendo datos...";
         if (cuuid == BleUuids.CHAR_METRIC_1) pasos = parsed;
