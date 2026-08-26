@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'ble/uuids.dart';
@@ -119,60 +121,73 @@ class _MobileAppState extends State<MobileApp> {
                     return;
                   }
 
-                  // Escanear durante 5s filtrando por SERVICE UUID
+                  // Esperar resultados reales antes de detener el escaneo.
                   if (_isConnecting || connectedDevice != null) {
                     setState(() { connectionState = 'Ya existe una conexión activa'; });
                     return;
                   }
                   _isConnecting = true;
+                  StreamSubscription<List<ScanResult>>? scanSubscription;
                   try {
-                    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
-                    BluetoothDevice? found;
-                    FlutterBluePlus.scanResults.listen((results) async {
+                    final foundDevice = Completer<BluetoothDevice>();
+                    scanSubscription = FlutterBluePlus.scanResults.listen((results) {
                       for (var r in results) {
                         // comprobar si el advertising contiene el service UUID
                         final adv = r.advertisementData;
                         if (adv.serviceUuids.contains(Guid(BleUuids.SERVICE))) {
-                          found = r.device;
+                          if (!foundDevice.isCompleted) {
+                            foundDevice.complete(r.device);
+                          }
                           break;
                         }
                       }
-                      if (found != null) {
-                        await FlutterBluePlus.stopScan();
-                        setState(() { connectionState = 'Conectando a ${found!.platformName.isNotEmpty ? found!.platformName : found!.remoteId.str}'; });
-                        try {
-                            await found!.connect(license: License.nonprofit);
-                        } catch (e) {
-                          // ignore if already connected or platform call failed
-                        }
-                        connectedDevice = found;
-                        setState(() { connectionState = 'Descubriendo servicios...'; });
-                        final services = await found!.discoverServices();
-                        int subscribedCount = 0;
-                        for (var s in services) {
-                          if (s.uuid.toString().toLowerCase() == BleUuids.SERVICE) {
-                            for (var c in s.characteristics) {
-                              final cuuid = c.uuid.toString().toLowerCase();
-                              if (cuuid == BleUuids.CHAR_METRIC_1 || cuuid == BleUuids.CHAR_METRIC_2 || cuuid == BleUuids.CHAR_METRIC_3) {
-                                if (c.properties.notify) {
-                                  await subscribeToWearable(c);
-                                  subscribedCount++;
-                                }
-                              }
-                            }
+                    });
+                    await FlutterBluePlus.startScan(
+                      withServices: [Guid(BleUuids.SERVICE)],
+                      timeout: const Duration(seconds: 10),
+                    );
+                    final found = await foundDevice.future.timeout(
+                      const Duration(seconds: 10),
+                      onTimeout: () => throw TimeoutException('No se encontró el servicio BLE esperado'),
+                    );
+                    await FlutterBluePlus.stopScan();
+                    setState(() { connectionState = 'Conectando a ${found.platformName.isNotEmpty ? found.platformName : found.remoteId.str}'; });
+                    await found.connect(license: License.nonprofit);
+                    connectedDevice = found;
+                    found.connectionState.listen((state) {
+                      if (!mounted || state != BluetoothConnectionState.disconnected) return;
+                      setState(() {
+                        connectionState = 'Wearable desconectado';
+                        connectedDevice = null;
+                      });
+                    });
+                    setState(() { connectionState = 'Descubriendo servicios...'; });
+                    final services = await found.discoverServices();
+                    int subscribedCount = 0;
+                    for (var s in services) {
+                      if (s.uuid.toString().toLowerCase() == BleUuids.SERVICE) {
+                        for (var c in s.characteristics) {
+                          final cuuid = c.uuid.toString().toLowerCase();
+                          if ((cuuid == BleUuids.CHAR_METRIC_1 || cuuid == BleUuids.CHAR_METRIC_2 || cuuid == BleUuids.CHAR_METRIC_3) && c.properties.notify) {
+                            await subscribeToWearable(c);
+                            subscribedCount++;
                           }
                         }
-                        if (subscribedCount != 3) {
-                          setState(() { connectionState = 'Conectado pero sin características NOTIFY en el servicio esperado'; });
-                        }
-                        _isConnecting = false;
                       }
+                    }
+                    setState(() {
+                      connectionState = subscribedCount == 3
+                          ? 'Conectado recibiendo datos...'
+                          : 'Conectado pero faltan características NOTIFY ($subscribedCount/3)';
                     });
                   } catch (e) {
                     setState(() { connectionState = 'Error BLE: $e'; });
-                    _isConnecting = false;
                   } finally {
-                    await FlutterBluePlus.stopScan();
+                    await scanSubscription?.cancel();
+                    if (FlutterBluePlus.isScanningNow) {
+                      await FlutterBluePlus.stopScan();
+                    }
+                    _isConnecting = false;
                   }
                 },
                 child: const Text('Conectar Wearable'),
