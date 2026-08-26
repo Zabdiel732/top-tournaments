@@ -116,16 +116,15 @@ class _MobileAppState extends State<MobileApp> {
                   }
 
                   // Escanear durante 5s filtrando por SERVICE UUID
-                  final flutterBlue = FlutterBluePlus.instance;
                   if (_isConnecting || connectedDevice != null) {
                     setState(() { connectionState = 'Ya existe una conexión activa'; });
                     return;
                   }
                   _isConnecting = true;
                   try {
-                    await flutterBlue.startScan(timeout: const Duration(seconds: 5));
+                    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
                     BluetoothDevice? found;
-                    flutterBlue.scanResults.listen((results) async {
+                    FlutterBluePlus.scanResults.listen((results) async {
                       for (var r in results) {
                         // comprobar si el advertising contiene el service UUID
                         final adv = r.advertisementData;
@@ -135,10 +134,10 @@ class _MobileAppState extends State<MobileApp> {
                         }
                       }
                       if (found != null) {
-                        await flutterBlue.stopScan();
+                        await FlutterBluePlus.stopScan();
                         setState(() { connectionState = 'Conectando a ${found!.name.isNotEmpty ? found!.name : found!.id.id}'; });
                         try {
-                          await found!.connect(timeout: const Duration(seconds: 10), autoConnect: false);
+                          await found!.connect();
                         } catch (e) {
                           // ignore if already connected
                         }
@@ -171,7 +170,7 @@ class _MobileAppState extends State<MobileApp> {
                     setState(() { connectionState = 'Error BLE: $e'; });
                     _isConnecting = false;
                   } finally {
-                    await flutterBlue.stopScan();
+                    await FlutterBluePlus.stopScan();
                   }
                 },
                 child: const Text('Conectar Wearable'),
