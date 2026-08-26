@@ -163,6 +163,9 @@ class _MobileAppState extends State<MobileApp> {
                     });
                     setState(() { connectionState = 'Descubriendo servicios...'; });
                     final services = await found.discoverServices();
+                    for (final service in services) {
+                      debugPrint('TopTournamentsBLE: discovered service ${service.uuid}');
+                    }
                     int subscribedCount = 0;
                     for (var s in services) {
                       if (s.uuid.toString().toLowerCase() == BleUuids.SERVICE) {
@@ -178,7 +181,7 @@ class _MobileAppState extends State<MobileApp> {
                     setState(() {
                       connectionState = subscribedCount == 3
                           ? 'Conectado recibiendo datos...'
-                          : 'Conectado pero faltan características NOTIFY ($subscribedCount/3)';
+                        : 'Servicio FF00 no encontrado o faltan NOTIFY ($subscribedCount/3)';
                     });
                   } catch (e) {
                     setState(() { connectionState = 'Error BLE: $e'; });

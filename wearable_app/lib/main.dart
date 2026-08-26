@@ -32,19 +32,14 @@ class _WearableScreenState extends State<WearableScreen> {
   int pasos = 0;
   int ritmo = 70;
   int calorias = 0;
+  String status = 'Listo';
   Timer? _timer;
   static const platform = MethodChannel('toptournaments/gatt');
 
-  void _toggleSimulation() {
+  Future<void> _toggleSimulation() async {
     setState(() {
       isRunning = !isRunning;
       if (isRunning) {
-        // Iniciar GATT Server nativo
-        try {
-          platform.invokeMethod('startGattServer');
-        } catch (e) {
-          // ignore
-        }
         _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
           // Actualizamos solo los valores (evitar trabajo pesado en main thread)
           pasos += Random().nextInt(3);
@@ -54,15 +49,26 @@ class _WearableScreenState extends State<WearableScreen> {
           if (mounted) setState(() {});
         });
       } else {
-        // Detener GATT Server nativo
-        try {
-          platform.invokeMethod('stopGattServer');
-        } catch (e) {
-          // ignore
-        }
         _timer?.cancel();
       }
     });
+    try {
+      await platform.invokeMethod(isRunning ? 'startGattServer' : 'stopGattServer');
+      if (mounted) {
+        setState(() {
+          status = isRunning ? 'GATT anunciado' : 'Detenido';
+        });
+      }
+    
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        status = 'Error GATT: ${error.message ?? error.code}';
+        isRunning = false;
+        _timer?.cancel();
+        _timer = null;
+      });
+    }
   }
 
   @override
@@ -132,6 +138,7 @@ class _WearableScreenState extends State<WearableScreen> {
                   ),
 
                   // Botón inferior
+                  Text(status, style: TextStyle(color: Colors.white70, fontSize: labelSize)),
                   SizedBox(
                     width: diameter * 0.6,
                     child: ElevatedButton(

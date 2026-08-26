@@ -53,6 +53,27 @@ class GattServer(private val context: Context) {
                 Log.i(TAG, "Device disconnected: ${device.address}")
             }
         }
+
+        override fun onDescriptorWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            descriptor: BluetoothGattDescriptor,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray,
+        ) {
+            super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value)
+            if (descriptor.uuid == UUID.fromString(CCCD_UUID)) {
+                descriptor.value = value
+                if (responseNeeded) {
+                    gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                }
+                Log.i(TAG, "CCCD configured for ${descriptor.characteristic.uuid}: ${value.contentToString()}")
+            } else if (responseNeeded) {
+                gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
+            }
+        }
     }
 
     fun startServer() {
@@ -158,9 +179,14 @@ class GattServer(private val context: Context) {
 
     private fun notifyAllClients(charUuid: String, value: ByteArray) {
         val characteristic = gattServer?.getService(UUID.fromString(SERVICE_UUID))?.getCharacteristic(UUID.fromString(charUuid))
+        if (characteristic == null) {
+            Log.e(TAG, "Characteristic not found: $charUuid")
+            return
+        }
         characteristic?.value = value
         for (device in connectedDevices) {
-            gattServer?.notifyCharacteristicChanged(device, characteristic, false)
+            val sent = gattServer?.notifyCharacteristicChanged(device, characteristic, false) ?: false
+            Log.d(TAG, "NOTIFY $charUuid to ${device.address}: $sent value=${value.contentToString()}")
         }
     }
 
