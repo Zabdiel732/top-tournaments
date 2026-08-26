@@ -2,19 +2,18 @@
 
 Instrucciones para ejecutar la PWA (Smart TV) y conectar con Firebase Firestore.
 
-1) Instalar dependencias y servir localmente
+1) Servir localmente
 
 ```bash
 cd tv_pwa
-npm install   # si no lo hiciste
-npx serve .   # abre http://localhost:3000
+npx serve .   # abre la URL indicada, por ejemplo http://localhost:3000
 ```
 
 2) Configurar Firebase
 
-- El archivo `index.html` ya incluye la configuración web de Firebase en la constante `firebaseConfig`.
-- No subas credenciales a GitHub. Para cambiar el proyecto, edita `index.html` y actualiza `firebaseConfig` con tus valores.
-- Activa Cloud Firestore en la consola de Firebase (modo prueba para desarrollo).
+- `app.js` inicializa Firebase y escucha `ecosystem/current` con `onSnapshot()`.
+- La clave web de Firebase identifica la aplicación; la protección real depende de reglas Firestore y no debe confundirse con una credencial privada.
+- Activa Cloud Firestore y la API Firestore en la consola de Firebase.
 
 3) Verificar Service Worker y modo Offline
 
@@ -24,7 +23,9 @@ npx serve .   # abre http://localhost:3000
 
 4) Pruebas básicas
 
-- La PWA escucha el documento `ecosystem/current` en Firestore y actualiza los valores `ritmo` y `pasos`.
+- La PWA escucha el documento `ecosystem/current` en Firestore y actualiza `ritmo`, `pasos` y `calorias` sin recargar.
+- Las flechas mueven el foco entre las cuatro tarjetas; `Enter`/`OK` selecciona la tarjeta enfocada.
+- Si Firestore no está disponible, se conserva el último dato en `localStorage` y se muestra el estado offline.
 - Para probar, ejecuta la app móvil y escribe en Firestore el documento `ecosystem/current`.
 
 ```

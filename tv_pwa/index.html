@@ -2,111 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Política de Seguridad del Contenido (CSP) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://*.firebaseio.com; script-src 'self' 'module' https://www.gstatic.com; img-src 'self' data:;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://*.firebaseio.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self'; img-src 'self' data:;">
     <title>Smart TV Dashboard</title>
     <link rel="manifest" href="manifest.json">
-    <style>
-        /* Safe Zone y Layout 10-foot */
-        body {
-            margin: 0;
-            padding: 54px 96px; /* Safe zone */
-            width: 100vw;
-            height: 100vh;
-            box-sizing: border-box;
-            background-color: #0F2027;
-            color: white;
-            font-family: Arial, sans-serif;
-            overflow: hidden; /* Sin scroll */
-        }
-        header {
-            display:flex; align-items:center; gap:20px; padding:12px 32px; background: linear-gradient(90deg,#0b2a33,#153742); box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-        }
-        header h1 { margin:0; font-size:28px; }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-gap: 20px;
-            height: 100%;
-        }
-        .card {
-            background: #203A43;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 64px; /* Jerarquía tipográfica */
-            border: 5px solid transparent;
-            transition: transform .12s ease, border-color .12s ease;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-        }
-        .card.active { border-color: #FFC107; } /* Foco D-pad */
-        .card:focus { transform: translateY(-6px); }
-        .metric { font-size: 56px; font-weight:700; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <img src="icon-192.png" width="48" height="48" alt="logo">
-        <h1>Top Tournaments — Dashboard</h1>
-        <div style="margin-left:auto; font-size:14px; opacity:0.8">Conectado a Firestore</div>
+    <main class="safe-zone">
+      <header>
+        <img src="logo.png" width="56" height="56" alt="Top Tournaments">
+        <div>
+          <p class="eyebrow">TOP TOURNAMENTS</p>
+          <h1>Panel de rendimiento</h1>
+        </div>
+        <p id="connection-status" class="status" aria-live="polite">Conectando...</p>
     </header>
-    <div class="grid">
-        <div class="card active" id="card-0">Ritmo: <div class="metric" id="tv-ritmo">0</div></div>
-        <div class="card" id="card-1">Pasos: <div class="metric" id="tv-pasos">0</div></div>
-        <div class="card" id="card-2">Torneo Activo</div>
-        <div class="card" id="card-3">Estadísticas</div>
-    </div>
-
-    <!-- Firebase SDKs (Añade tus credenciales) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-
-                // IMPORTANTE: Recuerda que las credenciales no deben subirse a GitHub (.env)
-                const firebaseConfig = {
-                    apiKey: "AIzaSyB_5zlS-c0SaubyBH2uUr4S6SflZ0bMfEw",
-                    authDomain: "top-tournaments.firebaseapp.com",
-                    projectId: "top-tournaments",
-                    storageBucket: "top-tournaments.firebasestorage.app",
-                    messagingSenderId: "149059459443",
-                    appId: "1:149059459443:web:2a78646e521c477b7e4d06"
-                };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // R4: Escucha reactiva
-        onSnapshot(doc(db, 'ecosystem', 'current'), (snapshot) => {
-            const data = snapshot.data();
-            if (data) {
-                document.getElementById('tv-ritmo').innerText = data.ritmo;
-                document.getElementById('tv-pasos').innerText = data.pasos;
-            }
-        });
-
-        // Registro de Service Worker para caché offline
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
-        }
-
-        // Navegación D-Pad
-        let currentIndex = 0;
-        const cards = document.querySelectorAll('.card');
-
-        window.addEventListener('keydown', (e) => {
-            cards[currentIndex].classList.remove('active');
-            if (e.key === 'ArrowRight' && currentIndex < 3) currentIndex++;
-            if (e.key === 'ArrowLeft' && currentIndex > 0) currentIndex--;
-            if (e.key === 'ArrowDown' && currentIndex < 2) currentIndex += 2;
-            if (e.key === 'ArrowUp' && currentIndex > 1) currentIndex -= 2;
-            
-            cards[currentIndex].classList.add('active');
-            
-            if (e.key === 'Enter') {
-                console.log("Elemento seleccionado: ", currentIndex);
-            }
-        });
-    </script>
+    <section class="grid" aria-label="Métricas y vistas">
+      <button class="card focused" data-view="ritmo"><span class="label">Ritmo</span><strong id="tv-ritmo">0</strong><span class="unit">BPM</span></button>
+      <button class="card" data-view="pasos"><span class="label">Pasos</span><strong id="tv-pasos">0</strong><span class="unit">ACUMULADOS</span></button>
+      <button class="card" data-view="calorias"><span class="label">Calorías</span><strong id="tv-calorias">0</strong><span class="unit">KCAL</span></button>
+      <button class="card" data-view="estado"><span class="label">Estado del torneo</span><strong id="tv-estado">EN VIVO</strong><span class="unit">DATOS ACTUALIZADOS</span></button>
+    </section>
+    <footer><span id="last-update">Esperando datos...</span><span>Foco: <b id="focus-name">Ritmo</b></span></footer>
+    </main>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
