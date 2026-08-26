@@ -30,6 +30,9 @@ class GattServer(private val context: Context) {
     private var gattServer: BluetoothGattServer? = null
     private val connectedDevices = mutableSetOf<BluetoothDevice>()
     private var timerRef: java.util.Timer? = null
+    private var pasosActuales = 0
+    private var ritmoActual = 70
+    private var caloriasActuales = 0
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
@@ -141,13 +144,16 @@ class GattServer(private val context: Context) {
 
     private fun startMetricGeneration() {
         if (timerRef != null) return
+        pasosActuales = 0
+        ritmoActual = 70
+        caloriasActuales = 0
         timerRef = fixedRateTimer("metrics", initialDelay = 0L, period = 1000L) {
-            val pasos = Random().nextInt(3) + 1
-            val ritmo = 70 + Random().nextInt(40)
-            val calorias = 1 + Random().nextInt(3)
-            notifyAllClients(CHAR1_UUID, intToLittleEndian(pasos))
-            notifyAllClients(CHAR2_UUID, intToLittleEndian(ritmo))
-            notifyAllClients(CHAR3_UUID, intToLittleEndian(calorias))
+            pasosActuales += Random().nextInt(3) + 1
+            ritmoActual = 70 + Random().nextInt(40)
+            caloriasActuales += Random().nextInt(3) + 1
+            notifyAllClients(CHAR1_UUID, intToLittleEndian(pasosActuales))
+            notifyAllClients(CHAR2_UUID, intToLittleEndian(ritmoActual))
+            notifyAllClients(CHAR3_UUID, intToLittleEndian(caloriasActuales))
         }
     }
 
@@ -166,6 +172,9 @@ class GattServer(private val context: Context) {
     fun stopServer() {
         timerRef?.cancel()
         timerRef = null
+        pasosActuales = 0
+        ritmoActual = 70
+        caloriasActuales = 0
         try {
             btAdapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback)
         } catch (e: Exception) {

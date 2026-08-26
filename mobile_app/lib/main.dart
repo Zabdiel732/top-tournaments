@@ -182,12 +182,14 @@ class _MobileAppState extends State<MobileApp> {
                     await found.connect(license: License.nonprofit);
                     connectedDevice = found;
                     found.connectionState.listen((state) {
+                      debugPrint('TopTournamentsBLE: connection state $state');
                       if (!mounted || state != BluetoothConnectionState.disconnected) return;
                       setState(() {
                         connectionState = 'Wearable desconectado';
                         connectedDevice = null;
                       });
                     });
+                    await found.requestConnectionPriority(connectionPriorityRequest: ConnectionPriority.high);
                     setState(() { connectionState = 'Descubriendo servicios...'; });
                     final services = await found.discoverServices();
                     for (final service in services) {
