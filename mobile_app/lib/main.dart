@@ -26,6 +26,10 @@ class _MobileAppState extends State<MobileApp> {
   int pasos = 0;
   int ritmo = 0;
   int calorias = 0;
+
+  bool _matchesUuid(Guid actual, String expected) {
+    return actual == Guid(expected);
+  }
   
   // R4: Escritura reactiva en Firestore
   Future<void> syncWithTV(int ritmo, int pasos) async {
@@ -56,11 +60,11 @@ class _MobileAppState extends State<MobileApp> {
       debugPrint('TopTournamentsBLE: notify from $cuuid -> $parsed');
       setState(() {
         connectionState = "Conectado recibiendo datos...";
-        if (cuuid == BleUuids.CHAR_METRIC_1) {
+        if (_matchesUuid(characteristic.uuid, BleUuids.CHAR_METRIC_1)) {
           pasos = parsed;
-        } else if (cuuid == BleUuids.CHAR_METRIC_2) {
+        } else if (_matchesUuid(characteristic.uuid, BleUuids.CHAR_METRIC_2)) {
           ritmo = parsed;
-        } else if (cuuid == BleUuids.CHAR_METRIC_3) {
+        } else if (_matchesUuid(characteristic.uuid, BleUuids.CHAR_METRIC_3)) {
           calorias = parsed;
         }
       });
@@ -168,10 +172,12 @@ class _MobileAppState extends State<MobileApp> {
                     }
                     int subscribedCount = 0;
                     for (var s in services) {
-                      if (s.uuid.toString().toLowerCase() == BleUuids.SERVICE) {
+                      if (_matchesUuid(s.uuid, BleUuids.SERVICE)) {
                         for (var c in s.characteristics) {
-                          final cuuid = c.uuid.toString().toLowerCase();
-                          if ((cuuid == BleUuids.CHAR_METRIC_1 || cuuid == BleUuids.CHAR_METRIC_2 || cuuid == BleUuids.CHAR_METRIC_3) && c.properties.notify) {
+                          final isMetric = _matchesUuid(c.uuid, BleUuids.CHAR_METRIC_1) ||
+                              _matchesUuid(c.uuid, BleUuids.CHAR_METRIC_2) ||
+                              _matchesUuid(c.uuid, BleUuids.CHAR_METRIC_3);
+                          if (isMetric && c.properties.notify) {
                             await subscribeToWearable(c);
                             subscribedCount++;
                           }
