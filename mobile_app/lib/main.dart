@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus_platform_interface/flutter_blue_plus_platform_interface.dart' as fbp_platform;
 import 'ble/uuids.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -137,9 +138,10 @@ class _MobileAppState extends State<MobileApp> {
                         await FlutterBluePlus.stopScan();
                         setState(() { connectionState = 'Conectando a ${found!.name.isNotEmpty ? found!.name : found!.id.id}'; });
                         try {
-                          await found!.connect(license: '');
+                          await fbp_platform.FlutterBluePlusPlatform.instance
+                              .connect(fbp_platform.BmConnectRequest(remoteId: found!.id, autoConnect: false));
                         } catch (e) {
-                          // ignore if already connected or license not required
+                          // ignore if already connected or platform call failed
                         }
                         connectedDevice = found;
                         setState(() { connectionState = 'Descubriendo servicios...'; });
